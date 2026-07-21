@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Patient {
+  id        String         @id @default(cuid())
+  name      String
+  age       Int
+  gender    String
+  phone     String?
+  address   String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  prescriptions Prescription[]
+}
+
+model Prescription {
+  id                      String              @id @default(cuid())
+  patientId               String
+  doctorName              String              @default("")
+  date                    DateTime
+  bloodPressureSystolic   Int?
+  bloodPressureDiastolic  Int?
+  temperature             Float?
+  bpUnit                  String              @default("mmHg")
+  tempUnit                String              @default("°C")
+  chiefComplaint          String?
+  medicines               String?
+  advice                  String?
+  followUpDate            DateTime?
+  followUpNotes           String?
+  notes                   String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Doctor {
+  id               String   @id @default(cuid())
+  name             String
+  specialization   String?
+  phone            String?
+  email            String?
+  address          String?
+  consultationFee  Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model MedicineMaster {
+  id             String   @id @default(cuid())
+  name           String
+  nameHi         String   @default("")
+  dosage         String   @default("")
+  dosageHi       String   @default("")
+  frequency      String   @default("")
+  duration       String   @default("")
+  durationHi     String   @default("")
+  instructions   String   @default("")
+  instructionsHi String   @default("")
+  category       String   @default("")
+  maenM          Boolean  @default(false)
+  maenA          Boolean  @default(false)
+  maenE          Boolean  @default(false)
+  maenN          Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
