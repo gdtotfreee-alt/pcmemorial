@@ -40,7 +40,7 @@ export async function PUT(
       where: { id },
       data: {
         name,
-        age: parseInt(age),
+        age: parseFloat(age),
         gender,
         phone: phone || null,
         address: address || null,

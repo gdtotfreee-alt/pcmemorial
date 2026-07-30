@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const patient = await db.patient.create({
       data: {
         name,
-        age: parseInt(age),
+        age: parseFloat(age),
         gender,
         phone: phone || null,
         address: address || null,

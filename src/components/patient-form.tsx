@@ -133,12 +133,12 @@ export function PatientForm({ onCreated, onUpdated }: PatientFormProps) {
                 <Input
                   id="age"
                   type="number"
-                  placeholder="Age in years"
+                  step="any"
+                  min="0"
+                  placeholder="Age in years (e.g., 6.5)"
                   value={form.age}
                   onChange={(e) => setForm({ ...form, age: e.target.value })}
                   required
-                  min="0"
-                  max="150"
                   className="border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
                 />
               </div>

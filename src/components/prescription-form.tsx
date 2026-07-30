@@ -69,6 +69,9 @@ export function PrescriptionForm({
     temperature: '',
     bpUnit: 'mmHg',
     tempUnit: '°C',
+    weight: '',
+    pulse: '',
+    sugarLevel: '',
     chiefComplaint: '',
     advice: '',
     followUpDate: '',
@@ -88,6 +91,9 @@ export function PrescriptionForm({
         temperature: editingPrescription.temperature ? String(editingPrescription.temperature) : '',
         bpUnit: editingPrescription.bpUnit || 'mmHg',
         tempUnit: editingPrescription.tempUnit || '°C',
+        weight: editingPrescription.weight ? String(editingPrescription.weight) : '',
+        pulse: editingPrescription.pulse ? String(editingPrescription.pulse) : '',
+        sugarLevel: editingPrescription.sugarLevel ? String(editingPrescription.sugarLevel) : '',
         chiefComplaint: editingPrescription.chiefComplaint || '',
         advice: editingPrescription.advice || '',
         followUpDate: editingPrescription.followUpDate ? new Date(editingPrescription.followUpDate).toISOString().split('T')[0] : '',
@@ -277,8 +283,11 @@ export function PrescriptionForm({
       bloodPressureSystolic: '',
       bloodPressureDiastolic: '',
       temperature: '',
-      bpUnit: 'mmHg',
+     bpUnit: 'mmHg',
       tempUnit: '°C',
+      weight: '',
+      pulse: '',
+      sugarLevel: '',
       chiefComplaint: '',
       advice: '',
       followUpDate: '',
@@ -427,6 +436,37 @@ export function PrescriptionForm({
                   </Select>
                 </div>
                 <p className="text-xs text-gray-400">Normal: 36.1°C – 37.2°C (97°F – 99°F)</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700">Weight (kg)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="Weight in kg"
+                  value={form.weight}
+                  onChange={(e) => setForm({ ...form, weight: e.target.value })}
+                  className="border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700">Pulse (bpm)</Label>
+                <Input
+                  type="number"
+                  placeholder="Pulse rate"
+                  value={form.pulse}
+                  onChange={(e) => setForm({ ...form, pulse: e.target.value })}
+                  className="border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700">Sugar Level (mg/dL)</Label>
+                <Input
+                  type="number"
+                  placeholder="Blood sugar"
+                  value={form.sugarLevel}
+                  onChange={(e) => setForm({ ...form, sugarLevel: e.target.value })}
+                  className="border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                />
               </div>
             </CardContent>
           </Card>
