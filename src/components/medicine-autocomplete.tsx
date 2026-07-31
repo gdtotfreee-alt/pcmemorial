@@ -7,10 +7,9 @@ import {
   searchMedicineTemplates,
   getMedicineTemplates,
   getMedicineCount,
-  invalidateMedicineCache,
+  refreshMedicineTemplatesInBackground,
   type MedicineTemplate,
-} from '@/lib/medicine-master';
-import type { Medicine } from '@/app/page';
+} from '@/lib/medicine-master';import type { Medicine } from '@/app/page';
 
 interface MedicineAutocompleteProps {
   onSelect: (medicine: Medicine) => void;
@@ -49,16 +48,13 @@ export function MedicineAutocomplete({
     return () => { cancelled = true; };
   }, []);
 
-  // Periodically refresh the cache (every 15s) to pick up changes from other devices
+  // Periodically refresh the cache (every 15s) to pick up changes from other devices.
+  // This never blanks the cache first — old data keeps serving search results
+  // until the new data has actually arrived.
   useEffect(() => {
     const interval = setInterval(async () => {
-      try {
-        invalidateMedicineCache();
-        await getMedicineTemplates();
-        setVersion((v) => v + 1);
-      } catch {
-        // silent
-      }
+      await refreshMedicineTemplatesInBackground();
+      setVersion((v) => v + 1);
     }, 15000);
     return () => clearInterval(interval);
   }, []);

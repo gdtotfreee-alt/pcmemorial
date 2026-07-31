@@ -125,11 +125,10 @@ export function MedicineMasterPage() {
     setVersion((v) => v + 1);
   }, []);
 
-  const templates = useMemo(() => {
+const templates = useMemo(() => {
     void version;
-    return searchMedicineTemplates(searchQuery);
+    return searchMedicineTemplatesUnlimited(searchQuery);
   }, [searchQuery, version]);
-
   const categories = useMemo(() => {
     void version;
     return getMedicineCategories();

@@ -32,6 +32,23 @@ export function invalidateMedicineCache(): void {
   cache = null;
 }
 
+/**
+ * Refresh the cache in the background WITHOUT clearing it first.
+ * The old data keeps serving search results until the new data has
+ * actually arrived, so search never sees an empty list mid-refresh.
+ */
+export async function refreshMedicineTemplatesInBackground(): Promise<void> {
+  try {
+    const res = await fetch('/api/medicines?limit=50000');
+    if (res.ok) {
+      const data = await res.json();
+      cache = data.medicines || [];
+    }
+  } catch {
+    // Network hiccup — keep serving the existing cache.
+  }
+}
+
 /** Fetch all medicine templates from the server (with cache). */
 export async function getMedicineTemplates(): Promise<MedicineTemplate[]> {
   if (cache) return cache;
@@ -154,6 +171,25 @@ export function searchMedicineTemplates(query: string): MedicineTemplate[] {
       t.dosage.toLowerCase().includes(s) ||
       t.instructions.toLowerCase().includes(s)
   ).slice(0, 20);
+}
+/** Get the full, unfiltered, uncapped list of cached medicine templates — for full listing pages. */
+export function getAllMedicineTemplates(): MedicineTemplate[] {
+  return cache ? [...cache] : [];
+}
+
+/** Search medicine templates with no result cap — for full listing pages (not the autocomplete dropdown). */
+export function searchMedicineTemplatesUnlimited(query: string): MedicineTemplate[] {
+  if (!cache) return [];
+  if (!query.trim()) return cache;
+  const s = query.toLowerCase();
+  return cache.filter(
+    (t) =>
+      t.name.toLowerCase().includes(s) ||
+      t.nameHi.toLowerCase().includes(s) ||
+      t.category.toLowerCase().includes(s) ||
+      t.dosage.toLowerCase().includes(s) ||
+      t.instructions.toLowerCase().includes(s)
+  );
 }
 
 /** Get unique categories from the cache. */
