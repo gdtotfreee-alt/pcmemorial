@@ -42,6 +42,7 @@ import {
   updateMedicineTemplate,
   deleteMedicineTemplate,
   searchMedicineTemplates,
+  searchMedicineTemplatesUnlimited,
   getMedicineTemplates,
   getMedicineCategories,
   invalidateMedicineCache,
