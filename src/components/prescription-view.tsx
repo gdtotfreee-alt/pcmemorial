@@ -19,7 +19,61 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import type { Prescription } from '@/app/page';
+
+// ─────────────────────────────────────────────────────────────
+// Self-contained type definitions (inline so this file has no
+// dependency on @/app/page — works in any project setup).
+// ─────────────────────────────────────────────────────────────
+interface Patient {
+  id: string;
+  name: string;
+  age: number;
+  gender: string;
+  phone?: string;
+  address?: string;
+  createdAt: string;
+}
+
+interface MedicineMAEN {
+  m: boolean;
+  a: boolean;
+  e: boolean;
+  n: boolean;
+}
+
+interface Medicine {
+  name: string;
+  nameHi?: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions?: string;
+  instructionsHi?: string;
+  maen?: MedicineMAEN;
+}
+
+interface Prescription {
+  id: string;
+  patientId: string;
+  doctorName?: string;
+  date: string;
+  bloodPressureSystolic?: number;
+  bloodPressureDiastolic?: number;
+  temperature?: number;
+  bpUnit: string;
+  tempUnit: string;
+  weight?: number;
+  pulse?: number;
+  sugarLevel?: number;
+  chiefComplaint?: string;
+  medicines?: Medicine[];
+  advice?: string;
+  followUpDate?: string;
+  followUpNotes?: string;
+  notes?: string;
+  patient?: Patient;
+  createdAt: string;
+}
 
 interface PrintSettings {
   showVitals: boolean;
@@ -54,6 +108,21 @@ interface PrintSettings {
   showHospitalPhone: boolean;
   showHospitalLogo: boolean;
   showHospitalRegNo: boolean;
+  // Disclaimer (shown at bottom of page) - tick option like Name/Address/Logo
+  showDisclaimer: boolean;
+  disclaimerText: string;
+  // Optional second disclaimer line (renders below the first)
+  disclaimerText2: string;
+  // Facilities (shown on side of page) - tick option like Name/Address/Logo
+  showFacilities: boolean;
+  facilitiesText: string;
+  facilitiesTextSize: 'small' | 'medium' | 'large' | 'xlarge';
+  // Doctors list with specialization (shown on side of page, ABOVE facilities) - tick option
+  showDoctors: boolean;
+  doctorsText: string;
+  doctorsTextSize: 'small' | 'medium' | 'large' | 'xlarge';
+  // Optional chief admin / director label inserted BEFORE the last doctor in the list
+  doctorsFooterLabel: string;
   fontSize: 'normal' | 'large' | 'compact';
   layout: 'standard' | 'compact';
   // Page setup (new)
@@ -63,11 +132,17 @@ interface PrintSettings {
   // Copy stamp (new)
   copyStamp: 'none' | 'original' | 'patient' | 'pharmacy' | 'duplicate';
   // Theme accent color (new)
-  themeColor: 'teal' | 'slate' | 'maroon' | 'black' | 'rose' | 'violet' | 'orange' | 'cyan';
+  themeColor: 'teal' | 'oceanic' | 'maroon' | 'black' | 'red' | 'pink' | 'purple' | 'orange';
   // Number of copies (new)
   copies: number;
   // Watermark size
   watermarkSize: 'small' | 'medium' | 'large' | 'xlarge';
+  // Internal migration flag (not user-facing) - marks that the footer trio
+  // (Rx ID & Date, Disclaimer, Doctor Signature) has been auto-enabled once.
+  _footerV2?: boolean;
+  // Internal migration flag (not user-facing) - marks that the doctors list has been
+  // upgraded to include the Chief Administrator / Director entry (6th doctor).
+  _doctorsV3?: boolean;
 }
 
 interface PrescriptionViewProps {
@@ -104,14 +179,16 @@ const PRINT_THEMES: Record<
   string,
   { name: string; primary: string; primaryDark: string; light: string; lighter: string; border: string; swatch: string }
 > = {
-  teal:    { name: 'Teal',    primary: '#0d9488', primaryDark: '#0f766e', light: '#f0fdfa', lighter: '#f5fffe', border: '#99f6e4', swatch: '#0d9488' },
-  slate:   { name: 'Slate',   primary: '#475569', primaryDark: '#334155', light: '#f1f5f9', lighter: '#f8fafc', border: '#cbd5e1', swatch: '#475569' },
-  maroon:  { name: 'Maroon',  primary: '#be123c', primaryDark: '#9f1239', light: '#fff1f2', lighter: '#fff5f6', border: '#fecdd3', swatch: '#be123c' },
-  black:   { name: 'Black',   primary: '#1f2937', primaryDark: '#111827', light: '#f3f4f6', lighter: '#f9fafb', border: '#d1d5db', swatch: '#111827' },
-  rose:    { name: 'Rose',    primary: '#e11d48', primaryDark: '#9f1239', light: '#fff1f2', lighter: '#fff5f6', border: '#fecdd3', swatch: '#e11d48' },
-  violet:  { name: 'Violet',  primary: '#7c3aed', primaryDark: '#5b21b6', light: '#f5f3ff', lighter: '#faf5ff', border: '#ddd6fe', swatch: '#7c3aed' },
-  orange:  { name: 'Orange',  primary: '#ea580c', primaryDark: '#c2410c', light: '#fff7ed', lighter: '#fffbf5', border: '#fed7aa', swatch: '#ea580c' },
-  cyan:    { name: 'Cyan',    primary: '#0891b2', primaryDark: '#155e75', light: '#ecfeff', lighter: '#f0fdff', border: '#a5f3fc', swatch: '#0891b2' },
+  teal:     { name: 'Teal',          primary: '#0d9488', primaryDark: '#0f766e', light: '#f0fdfa', lighter: '#f5fffe', border: '#99f6e4', swatch: '#0d9488' },
+  // Oceanic Blue - color sampled from uploaded brand image (#148DE7)
+  oceanic:  { name: 'Oceanic Blue',  primary: '#148DE7', primaryDark: '#0E6FB8', light: '#eff8ff', lighter: '#f5fbff', border: '#a8d8f5', swatch: '#148DE7' },
+  maroon:   { name: 'Maroon',        primary: '#be123c', primaryDark: '#9f1239', light: '#fff1f2', lighter: '#fff5f6', border: '#fecdd3', swatch: '#be123c' },
+  black:    { name: 'Black',         primary: '#1f2937', primaryDark: '#111827', light: '#f3f4f6', lighter: '#f9fafb', border: '#d1d5db', swatch: '#111827' },
+  red:      { name: 'Red',          primary: '#dc2626', primaryDark: '#b91c1c', light: '#fef2f2', lighter: '#fff5f5', border: '#fecaca', swatch: '#dc2626' },
+  pink:     { name: 'Pink',          primary: '#db2777', primaryDark: '#be185d', light: '#fdf2f8', lighter: '#fff5fa', border: '#f9a8d4', swatch: '#db2777' },
+  // New themes (distinct from the original six)
+  purple:   { name: 'Royal Purple',  primary: '#7c3aed', primaryDark: '#6d28d9', light: '#f5f3ff', lighter: '#faf9ff', border: '#ddd6fe', swatch: '#7c3aed' },
+  orange:   { name: 'Sunset Orange', primary: '#ea580c', primaryDark: '#c2410c', light: '#fff7ed', lighter: '#fffbf5', border: '#fed7aa', swatch: '#ea580c' },
 };
 
 /** Copy-stamp banner labels. */
@@ -156,6 +233,19 @@ const WATERMARK_SIZE_MAP: Record<string, { textPx: number; imgPct: number }> = {
   xlarge: { textPx: 100, imgPct: 90 },
 };
 
+/** Side-panel size presets (shared by Doctors & Facilities strips).
+ *  title  = font-size (px) of the section heading ("Our Doctors" / "Our Facilities")
+ *  item   = font-size (px) of each line
+ *  width  = panel width (px)
+ *  padRight = right padding reserved on .rx-page so content doesn't overlap the panel */
+// Side-panel size presets. Title sizes are deliberately large (black bold headings).
+const SIDE_SIZE_MAP: Record<string, { title: number; item: number; width: number; padRight: number }> = {
+  small:  { title: 14,   item: 8.5,  width: 80,  padRight: 92 },
+  medium: { title: 16,   item: 10,   width: 90,  padRight: 104 },
+  large:  { title: 18,   item: 11.5, width: 100, padRight: 116 },
+  xlarge: { title: 20,   item: 13,   width: 115, padRight: 130 },
+};
+
 const defaultSettings: PrintSettings = {
   showVitals: true,
   showChiefComplaint: true,
@@ -167,8 +257,8 @@ const defaultSettings: PrintSettings = {
   showHindiFreq: true,
   showHindiSchedule: true,
   showHindiInstructions: true,
-  showSignature: false,
-  showRxId: false,
+  showSignature: true,
+  showRxId: true,
   showMedDosage: true,
   showMedFrequency: true,
   showMedDuration: true,
@@ -188,6 +278,16 @@ const defaultSettings: PrintSettings = {
   showHospitalPhone: true,
   showHospitalLogo: true,
   showHospitalRegNo: false,
+  showDisclaimer: true,
+  disclaimerText: 'This prescription is generated based on clinical examination and patient-provided information. Take medicines exactly as advised and complete the full course. Consult the doctor immediately in case of any adverse reaction or if symptoms persist.',
+  disclaimerText2: '',
+  showFacilities: false,
+  facilitiesText: '24x7 Emergency\nIn-house Pharmacy\nPathology Lab\nDigital X-Ray\nECG & Echo\nICU & NICU\nOperation Theatre\nAmbulance Service',
+  facilitiesTextSize: 'medium',
+  showDoctors: false,
+  doctorsText: 'Dr. Rajesh Verma|General Physician|MBBS, MD\nDr. Sunita Gupta|Cardiologist|DM Cardiology\nDr. Imran Khan|Orthopedic|MS Ortho\nDr. Priya Singh|Pediatrician|MD Pediatrics\nDr. Amit Patel|ENT Specialist|MS ENT\nDr. Prem Prakash Gautam|Orthopedic|MS Ortho',
+  doctorsTextSize: 'medium',
+  doctorsFooterLabel: 'Chief Administrator / Director',
   fontSize: 'normal',
   layout: 'standard',
   paperSize: 'A4',
@@ -203,7 +303,33 @@ export function loadPrintSettings(): PrintSettings {
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem('pcm-print-settings');
-      if (stored) return { ...defaultSettings, ...JSON.parse(stored) };
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Migrate old single-line doctor format to the new 3-field (Name|Spec|Qual) format
+        if (parsed.doctorsText && !parsed.doctorsText.includes('|')) {
+          parsed.doctorsText = defaultSettings.doctorsText;
+        }
+        // One-time migration: upgrade the default 5-doctor list to the new 6-doctor list
+        // that includes Dr. Prem Prakash Gautam as the Chief Administrator / Director.
+        // Only runs if the stored value still matches the OLD 5-doctor default (i.e. the user
+        // hasn't customized their doctors list). Custom lists are preserved as-is.
+        if (!parsed._doctorsV3) {
+          const OLD_5_DOCTOR_DEFAULT = 'Dr. Rajesh Verma|General Physician|MBBS, MD\nDr. Sunita Gupta|Cardiologist|DM Cardiology\nDr. Imran Khan|Orthopedic|MS Ortho\nDr. Priya Singh|Pediatrician|MD Pediatrics\nDr. Amit Patel|ENT Specialist|MS ENT';
+          if (parsed.doctorsText === OLD_5_DOCTOR_DEFAULT) {
+            parsed.doctorsText = defaultSettings.doctorsText;
+          }
+          parsed._doctorsV3 = true;
+        }
+        // One-time migration: enable the footer trio (Rx ID & Date, Disclaimer, Doctor Signature)
+        // for existing users so they appear at the bottom of the prescription as requested.
+        if (!parsed._footerV2) {
+          parsed.showRxId = true;
+          parsed.showSignature = true;
+          parsed.showDisclaimer = true;
+          parsed._footerV2 = true;
+        }
+        return { ...defaultSettings, ...parsed };
+      }
     } catch {}
   }
   return defaultSettings;
@@ -383,10 +509,80 @@ function generateAndPrint(prescription: Prescription, s: PrintSettings, asPdf: b
     ? `<div class="reg-no"><span class="reg-no-label">Reg. No.</span><span class="reg-no-value">${s.hospitalRegNo}</span></div>`
     : '';
 
+  // Disclaimer text block - rendered at the BOTTOM of the page (after footer)
+  // Disclaimer: primary line (always shown when enabled) + optional second line (disclaimerText2).
+  const escHtml = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  const disclaimerHtml = (s.showDisclaimer && (s.disclaimerText.trim() || (s.disclaimerText2 || '').trim()))
+    ? `<div class="disclaimer-bottom"><span class="disclaimer-label">Disclaimer</span><span class="disclaimer-text">${escHtml(s.disclaimerText)}</span>${(s.disclaimerText2 || '').trim() ? `<br><span class="disclaimer-text-2">${escHtml(s.disclaimerText2)}</span>` : ''}</div>`
+    : '';
+
+  // HTML-escape helper for user-entered side-panel text
+  const esc = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Doctors list - rendered on the SIDE of the page, ABOVE facilities (no box, plain bold text).
+  // Each doctor line uses the pipe-separated format: Name|Specialization|Qualifications
+  // Rendered as a 3-line block: bold name, italic specialization (in parens), muted qualifications.
+  const docSize = SIDE_SIZE_MAP[s.doctorsTextSize] || SIDE_SIZE_MAP.medium;
+  const doctorsSectionHtml = (s.showDoctors && s.doctorsText.trim())
+    ? (() => {
+        const items = s.doctorsText.split('\n').map(l => l.trim()).filter(Boolean);
+        const buildItemHtml = (it: string) => {
+          const parts = it.split('|').map(p => p.trim());
+          const name = parts[0] || '';
+          const spec = parts[1] || '';
+          const qual = parts[2] || '';
+          let h = `<div class="doc-name" style="font-size:${docSize.item}px">${esc(name)}</div>`;
+          if (spec) h += `<div class="doc-spec" style="font-size:${(docSize.item * 0.85).toFixed(1)}px">${esc(spec.startsWith('(') ? spec : `(${spec})`)}</div>`;
+          if (qual) h += `<div class="doc-qual" style="font-size:${(docSize.item * 0.78).toFixed(1)}px">${esc(qual)}</div>`;
+          return `<div class="doctor-item">${h}</div>`;
+        };
+        // Optional label (e.g. "Chief Administrator / Director") inserted BEFORE the last doctor,
+        // designating the last doctor in the list as the chief administrator/director.
+        const footerLabel = (s.doctorsFooterLabel || '').trim();
+        let itemsHtml: string;
+        let footerHtml = '';
+        let lastItemHtml = '';
+        if (footerLabel && items.length >= 1) {
+          const allButLast = items.slice(0, -1);
+          lastItemHtml = buildItemHtml(items[items.length - 1]);
+          itemsHtml = allButLast.map(buildItemHtml).join('');
+          footerHtml = `<div class="doctors-footer-label" style="font-size:${(docSize.title * 0.5).toFixed(1)}px">${esc(footerLabel)}</div>`;
+        } else {
+          itemsHtml = items.map(buildItemHtml).join('');
+        }
+        return `<div class="side-section doctors-section"><div class="side-title" style="font-size:${docSize.title}px">Our Doctors</div>${itemsHtml}${footerHtml}${lastItemHtml}</div>`;
+      })()
+    : '';
+
+  // Facilities list - rendered on the SIDE of the page, BELOW doctors (no box, plain bold text)
+  const facSize = SIDE_SIZE_MAP[s.facilitiesTextSize] || SIDE_SIZE_MAP.medium;
+  const facilitiesSectionHtml = (s.showFacilities && s.facilitiesText.trim())
+    ? (() => {
+        const items = s.facilitiesText.split('\n').map(l => l.trim()).filter(Boolean);
+        const itemsHtml = items.map(it => `<div class="side-item facility-item" style="font-size:${facSize.item}px">${esc(it)}</div>`).join('');
+        return `<div class="side-section facilities-section"><div class="side-title" style="font-size:${facSize.title}px">Our Facilities</div>${itemsHtml}</div>`;
+      })()
+    : '';
+
+  // Combined side panel: doctors on TOP, facilities on BOTTOM. No box/border/background.
+  const hasSide = !!(doctorsSectionHtml || facilitiesSectionHtml);
+  const sidePanelWidth = Math.max(
+    doctorsSectionHtml ? docSize.width : 0,
+    facilitiesSectionHtml ? facSize.width : 0,
+  );
+  const sidePanelPadRight = Math.max(
+    doctorsSectionHtml ? docSize.padRight : 0,
+    facilitiesSectionHtml ? facSize.padRight : 0,
+  );
+  const sidePanelHtml = hasSide
+    ? `<div class="side-panel" style="width:${sidePanelWidth}px">${doctorsSectionHtml}${facilitiesSectionHtml}</div>`
+    : '';
+
   // Inner content of a single prescription page (no outer .rx-page wrapper)
   const pageInner = `${watermarkHtml}
     ${stampHtml}
     ${regNoHtml}
+    ${sidePanelHtml}
     ${s.hospitalName && s.showHospitalName ? `<div class="rx-header">${s.logoData && s.showHospitalLogo ? `<div class="rx-header-logo"><img src="${s.logoData}" alt="logo"></div>` : ''}<div class="rx-header-text"><div class="hospital-name">${s.hospitalName}</div>${s.hospitalTagline && s.showHospitalTagline ? `<div class="hospital-sub">${s.hospitalTagline}</div>` : ''}${hospitalAddressHtml}${hospitalPhoneHtml}</div></div>` : ''}
     <div class="patient-grid">
       <div class="patient-info-row"><span class="pg-value patient-name">${patient?.name || '\u2014'}</span>${patient?.age ? `<span class="pg-separator">|</span><span class="pg-value"><span class="pg-label">Age:</span> ${patient.age} yrs</span>` : ''}${patient?.gender ? `<span class="pg-separator">|</span><span class="pg-value"><span class="pg-label">Sex:</span> ${patient.gender}</span>` : ''}${patient?.address ? `<span class="pg-separator">|</span><span class="pg-value patient-address-inline"><span class="pg-label">Addr:</span> ${patient.address}</span>` : ''}${patient?.phone ? `<span class="pg-separator">|</span><span class="pg-value"><span class="pg-label">Ph:</span> ${patient.phone}</span>` : ''}</div>
@@ -403,17 +599,18 @@ function generateAndPrint(prescription: Prescription, s: PrintSettings, asPdf: b
       if (!hasFooterSections) return '';
       return `<hr class="section-divider"><div class="footer-sections-stack">${adviceSection ? adviceSection : ''}${followUpSection ? followUpSection : ''}${notesSection ? notesSection : ''}</div>`;
     })()}
-    <div class="rx-footer">
-      <div class="footer-left">${s.showRxId ? `Generated: ${new Date().toLocaleString('en-IN')}<br><span class="rx-id">Rx ID: ${rx.id}</span>` : ''}</div>
-      ${s.showSignature ? `<div class="signature-area">${rx.doctorName ? `<div class="sig-name">${rx.doctorName}</div>` : ''}<div class="sig-line"></div><div class="sig-label">Doctor's Signature</div></div>` : ''}
-    </div>`;
+    ${(s.showRxId || s.showSignature) ? `<div class="rx-footer"><div class="footer-left">${s.showRxId ? `Generated: ${new Date().toLocaleString('en-IN')}<br><span class="rx-id">Rx ID: ${rx.id}</span>` : ''}</div>${s.showSignature ? `<div class="signature-area">${rx.doctorName ? `<div class="sig-name">${rx.doctorName}</div>` : ''}<div class="sig-line"></div><div class="sig-label">Doctor's Signature</div></div>` : ''}</div>` : ''}
+    ${disclaimerHtml}`;
 
   // Build N copies; each .rx-page prints on its own sheet via break-after.
+  // When the side panel (doctors and/or facilities) is shown, reserve right padding
+  // so the main content does not overlap the absolutely-positioned side panel.
+  const sidePanelClass = hasSide ? ' has-side-panel' : '';
   const pagesHtml = Array.from({ length: copies }, (_, i) => {
     const copyBanner = copies > 1
       ? `<div class="copy-banner">Copy ${i + 1} of ${copies}</div>`
       : '';
-    return `<div class="rx-page">${copyBanner}${pageInner}</div>`;
+    return `<div class="rx-page${sidePanelClass}">${copyBanner}${pageInner}</div>`;
   }).join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Prescription - ${patient?.name || ''}</title>
@@ -421,7 +618,8 @@ function generateAndPrint(prescription: Prescription, s: PrintSettings, asPdf: b
     @page { size: ${paperCss} ${orient}; margin: ${marginCss}; }
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: ${baseFontSize}; color: #1f2937; line-height: 1.4; }
-    .rx-page { position: relative; max-width: 760px; margin: 0 auto; padding: ${padding}; break-after: page; --t-primary:${theme.primary}; --t-primary-dark:${theme.primaryDark}; --t-light:${theme.light}; --t-lighter:${theme.lighter}; --t-border:${theme.border}; --t-accent:${theme.accent}; }
+    html, body { height: 100%; }
+    .rx-page { position: relative; max-width: 760px; margin: 0 auto; padding: ${padding}; break-after: page; display: flex; flex-direction: column; min-height: 100vh; --t-primary:${theme.primary}; --t-primary-dark:${theme.primaryDark}; --t-light:${theme.light}; --t-lighter:${theme.lighter}; --t-border:${theme.border}; --t-accent:${theme.accent}; }
     .rx-page:last-child { break-after: auto; }
     .copy-banner { text-align:center; font-size:10px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px; }
     .copy-stamp { position:absolute; top:14px; left:14px; padding:4px 12px; border:2px solid; border-radius:4px; font-size:11px; font-weight:800; letter-spacing:1px; background:#fff; z-index:10; text-transform:uppercase; }
@@ -489,14 +687,38 @@ function generateAndPrint(prescription: Prescription, s: PrintSettings, asPdf: b
     .maen-box.active { background: var(--t-primary-dark); color: #fff; border-color: var(--t-primary-dark); }
     .med-inst-inline { font-style: italic; background: #fef3c7; color: #92400e; }
     .med-divider { width: 100%; border-top: 1px dashed #9ca3af; margin-top: 4px; padding-bottom: 1px; height: 0; }
-    .rx-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: ${sectionGap}; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+    /* Footer pushed to the bottom of the page via flex auto margin.
+       margin-top:auto absorbs all free space above the footer so the
+       Rx ID/Signature row + Disclaimer sit at the bottom of the sheet. */
+    .rx-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 12px; border-top: 1px solid #e5e7eb; }
     .rx-footer .footer-left { font-size: 9px; color: #9ca3af; }
     .rx-footer .footer-left .rx-id { font-family: monospace; font-size: 10px; color: #b0b0b0; }
     .rx-footer .signature-area { text-align: center; }
     .rx-footer .sig-line { width: 180px; border-top: 1.5px solid #4b5563; margin-bottom: 4px; }
     .rx-footer .sig-label { font-size: 11px; color: #4b5563; font-weight: 500; }
     .rx-footer .sig-name { font-size: 13px; color: #1f2937; font-weight: 600; margin-top: 2px; }
-    @media print { body { padding: 0; } .rx-page { padding: ${padding}; } .watermark, .watermark-img { display: block; } }
+    /* Side panel - vertical strip on the RIGHT edge of the page. NO box/border/background (plain bold text). Doctors on top, facilities below. */
+    .side-panel { position: absolute; top: 90px; right: 6px; display: flex; flex-direction: column; gap: 64px; z-index: 5; }
+    .side-panel .side-section { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    /* Side-panel section titles (Our Doctors / Our Facilities): BLACK + large bold */
+    .side-panel .side-title { font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; color: #000000; border-bottom: 1px dashed var(--t-border); padding-bottom: 6px; margin-bottom: 8px; width: 100%; }
+    .side-panel .side-item { font-weight: 800; text-align: center; line-height: 1.3; color: var(--t-primary-dark); }
+    /* Facilities section: tighter gap between single-line items (e.g. In-house Pharmacy / Ambulance Service) */
+    .side-panel .facilities-section { gap: 5px; }
+    /* Doctor item: 3-line block (Name / Specialization / Qualifications) with tight internal spacing */
+    .side-panel .doctor-item { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; line-height: 1.2; }
+    .side-panel .doctor-item .doc-name { font-weight: 800; color: var(--t-primary-dark); }
+    .side-panel .doctor-item .doc-spec { font-weight: 700; color: var(--t-primary); font-style: italic; }
+    .side-panel .doctor-item .doc-qual { font-weight: 600; color: #6b7280; }
+    /* Footer label at the BOTTOM of the doctors list (e.g. "Chief Administrator / Director") */
+    .side-panel .doctors-footer-label { font-weight: 900; color: #000000; text-align: center; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 10px; margin-bottom: 8px; padding-top: 6px; border-top: 1px dashed var(--t-border); width: 100%; line-height: 1.15; }
+    /* When side panel is shown, reserve right padding so content doesn't overlap it */
+    .rx-page.has-side-panel { padding-right: ${sidePanelPadRight}px; }
+    /* Disclaimer block - rendered at the BOTTOM of the page (below footer) */
+    .disclaimer-bottom { margin-top: 10px; padding: 6px 10px; border-top: 1px dashed var(--t-border); font-size: 9px; color: #6b7280; font-style: italic; line-height: 1.45; text-align: justify; }
+    .disclaimer-bottom .disclaimer-label { display: inline-block; font-weight: 800; font-style: normal; color: var(--t-primary-dark); text-transform: uppercase; letter-spacing: 0.5px; font-size: 8.5px; margin-right: 6px; padding: 1px 5px; background: var(--t-light); border-radius: 3px; vertical-align: baseline; }
+    .disclaimer-bottom .disclaimer-text-2 { display: block; margin-top: 2px; color: #6b7280; font-style: italic; }
+    @media print { body { padding: 0; } .rx-page { padding: ${padding}; } .rx-page.has-side-panel { padding-right: ${sidePanelPadRight}px; } .watermark, .watermark-img { display: block; } }
   </style>
 </head><body>
   ${pagesHtml}
@@ -535,7 +757,31 @@ export function PrescriptionView({ prescription }: PrescriptionViewProps) {
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('pcm-print-settings');
-        if (stored) return { ...defaultSettings, ...JSON.parse(stored) };
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          // Migrate old single-line doctor format to the new 3-field (Name|Spec|Qual) format
+          if (parsed.doctorsText && !parsed.doctorsText.includes('|')) {
+            parsed.doctorsText = defaultSettings.doctorsText;
+          }
+          // One-time migration: upgrade the default 5-doctor list to the new 6-doctor list
+          // that includes Dr. Prem Prakash Gautam as the Chief Administrator / Director.
+          // Only runs if the stored value still matches the OLD 5-doctor default.
+          if (!parsed._doctorsV3) {
+            const OLD_5_DOCTOR_DEFAULT = 'Dr. Rajesh Verma|General Physician|MBBS, MD\nDr. Sunita Gupta|Cardiologist|DM Cardiology\nDr. Imran Khan|Orthopedic|MS Ortho\nDr. Priya Singh|Pediatrician|MD Pediatrics\nDr. Amit Patel|ENT Specialist|MS ENT';
+            if (parsed.doctorsText === OLD_5_DOCTOR_DEFAULT) {
+              parsed.doctorsText = defaultSettings.doctorsText;
+            }
+            parsed._doctorsV3 = true;
+          }
+          // One-time migration: enable the footer trio (Rx ID & Date, Disclaimer, Doctor Signature)
+          if (!parsed._footerV2) {
+            parsed.showRxId = true;
+            parsed.showSignature = true;
+            parsed.showDisclaimer = true;
+            parsed._footerV2 = true;
+          }
+          return { ...defaultSettings, ...parsed };
+        }
       } catch {}
     }
     return defaultSettings;
@@ -643,6 +889,9 @@ export function PrescriptionView({ prescription }: PrescriptionViewProps) {
                     { key: 'showNotes', label: 'Notes' },
                     { key: 'showSignature', label: 'Signature Area' },
                     { key: 'showRxId', label: 'Rx ID & Date' },
+                    { key: 'showDisclaimer', label: 'Disclaimer (bottom)' },
+                    { key: 'showDoctors', label: 'Doctors (side)' },
+                    { key: 'showFacilities', label: 'Facilities (side)' },
                   ] as const).map(({ key, label }) => (
                     <div key={key} className="flex items-center gap-2">
                       <Checkbox
@@ -710,6 +959,102 @@ export function PrescriptionView({ prescription }: PrescriptionViewProps) {
                       <Label className="text-[10px] text-gray-500 whitespace-nowrap">Watermark Size:</Label>
                       <Select value={settings.watermarkSize} onValueChange={(val) => updateSetting('watermarkSize', val)}>
                         <SelectTrigger className="w-32 h-8 text-xs border-blue-200 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="small">Small</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="large">Large</SelectItem>
+                          <SelectItem value="xlarge">Extra Large</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Disclaimer text editor - shown when Disclaimer tick is ON */}
+                {settings.showDisclaimer && (
+                  <div className="mt-2.5 ml-6 p-3 rounded-lg border border-emerald-200 bg-emerald-50/40">
+                    <Label className="text-[10px] text-gray-500">Disclaimer Line 1 (shown at the BOTTOM of the printed page)</Label>
+                    <p className="text-[10px] text-gray-400 mb-1.5">Appears below the signature/footer area in a small italic style.</p>
+                    <textarea
+                      value={settings.disclaimerText}
+                      onChange={(e) => updateSetting('disclaimerText', e.target.value)}
+                      placeholder="Disclaimer text to show at the bottom of the printed prescription..."
+                      rows={3}
+                      className="mt-1 w-full text-xs border border-emerald-200 rounded-md p-2 resize-y bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    />
+                    {/* Optional second disclaimer line */}
+                    <Label className="text-[10px] text-gray-500 mt-3 block">Disclaimer Line 2 (optional)</Label>
+                    <p className="text-[10px] text-gray-400 mb-1.5">If filled, renders as an extra line below the first disclaimer. Leave empty to hide.</p>
+                    <textarea
+                      value={settings.disclaimerText2}
+                      onChange={(e) => updateSetting('disclaimerText2', e.target.value)}
+                      placeholder="Optional second disclaimer line..."
+                      rows={2}
+                      className="mt-1 w-full text-xs border border-emerald-200 rounded-md p-2 resize-y bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    />
+                  </div>
+                )}
+
+                {/* Doctors text editor - shown when Doctors tick is ON (appears ABOVE facilities on the side) */}
+                {settings.showDoctors && (
+                  <div className="mt-2.5 ml-6 p-3 rounded-lg border border-emerald-200 bg-emerald-50/40">
+                    <Label className="text-[10px] text-gray-500">Doctors List (shown on the SIDE, ABOVE facilities)</Label>
+                    <p className="text-[10px] text-gray-400 mb-1.5">One doctor per line. Use <code className="text-emerald-700">|</code> to separate <span className="font-bold text-emerald-700">Name | Specialization | Qualifications</span>. Shown as a 3-line block on the right edge, above facilities.</p>
+                    <textarea
+                      value={settings.doctorsText}
+                      onChange={(e) => updateSetting('doctorsText', e.target.value)}
+                      placeholder={"Format: Name|Specialization|Qualifications\n\nDr. Rajesh Verma|General Physician|MBBS, MD\nDr. Sunita Gupta|Cardiologist|DM Cardiology"}
+                      rows={6}
+                      className="mt-1 w-full text-xs border border-emerald-200 rounded-md p-2 resize-y font-mono bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    />
+                    {/* Doctors Text Size */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <Label className="text-[10px] text-gray-500 whitespace-nowrap">Doctors Text Size:</Label>
+                      <Select value={settings.doctorsTextSize} onValueChange={(val) => updateSetting('doctorsTextSize', val)}>
+                        <SelectTrigger className="w-36 h-8 text-xs border-emerald-200 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="small">Small</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="large">Large</SelectItem>
+                          <SelectItem value="xlarge">Extra Large</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Chief Admin / Director label - inserted BEFORE the last doctor */}
+                    <div className="mt-3">
+                      <Label className="text-[10px] text-gray-500">Chief Admin / Director Label (shown above the last doctor)</Label>
+                      <p className="text-[10px] text-gray-400 mb-1.5">Optional. Renders as a small bold BLACK caption just BEFORE the last doctor in the list, designating that doctor as the chief administrator/director. Leave empty to hide.</p>
+                      <Input
+                        value={settings.doctorsFooterLabel}
+                        onChange={(e) => updateSetting('doctorsFooterLabel', e.target.value)}
+                        placeholder="e.g. Chief Administrator / Director"
+                        className="mt-1 w-full text-xs border border-emerald-200 rounded-md h-8 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Facilities text editor - shown when Facilities tick is ON (appears BELOW doctors on the side) */}
+                {settings.showFacilities && (
+                  <div className="mt-2.5 ml-6 p-3 rounded-lg border border-emerald-200 bg-emerald-50/40">
+                    <Label className="text-[10px] text-gray-500">Facilities List (shown on the SIDE, BELOW doctors)</Label>
+                    <p className="text-[10px] text-gray-400 mb-1.5">One facility per line. Appears as a plain <span className="font-bold text-emerald-700">bold</span> text strip on the right edge, below doctors. No box/border.</p>
+                    <textarea
+                      value={settings.facilitiesText}
+                      onChange={(e) => updateSetting('facilitiesText', e.target.value)}
+                      placeholder={"One facility per line, e.g.:\n24x7 Emergency\nPharmacy\nPathology Lab"}
+                      rows={6}
+                      className="mt-1 w-full text-xs border border-emerald-200 rounded-md p-2 resize-y font-mono bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    />
+                    {/* Facilities Text Size */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <Label className="text-[10px] text-gray-500 whitespace-nowrap">Facilities Text Size:</Label>
+                      <Select value={settings.facilitiesTextSize} onValueChange={(val) => updateSetting('facilitiesTextSize', val)}>
+                        <SelectTrigger className="w-36 h-8 text-xs border-emerald-200 bg-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -921,16 +1266,20 @@ export function PrescriptionView({ prescription }: PrescriptionViewProps) {
       </div>
 
       {/* Prescription Content (Preview) */}
-      <div className="bg-white border-2 border-emerald-200 rounded-xl p-6 sm:p-8 font-serif relative overflow-hidden" id="prescription-print">
-        {/* Watermark (text or image) */}
-        {settings.showWatermark && (() => {
-          const wmPreviewSize = WATERMARK_SIZE_MAP[settings.watermarkSize] || WATERMARK_SIZE_MAP.medium;
-          return settings.watermarkImage ? (
+      <div className="bg-white border-2 border-emerald-200 rounded-xl p-6 sm:p-8 font-serif relative overflow-visible flex flex-col min-h-[1123px]" style={(settings.showDoctors || settings.showFacilities) && (settings.doctorsText.trim() || settings.facilitiesText.trim()) ? { paddingRight: `${Math.max(SIDE_SIZE_MAP[settings.doctorsTextSize]?.padRight || 0, SIDE_SIZE_MAP[settings.facilitiesTextSize]?.padRight || 0) + 8}px` } : undefined} id="prescription-print">
+        {/* Watermark (text or image) - clipped to rounded card via wrapper */}
+        {settings.showWatermark && (
+          <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+            {(() => {
+              const wmPreviewSize = WATERMARK_SIZE_MAP[settings.watermarkSize] || WATERMARK_SIZE_MAP.medium;
+              return settings.watermarkImage ? (
             <img src={settings.watermarkImage} alt="" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" style={{ maxWidth: `${wmPreviewSize.imgPct}%`, maxHeight: `${wmPreviewSize.imgPct}%`, objectFit: 'contain', opacity: 0.10 }} />
           ) : (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 pointer-events-none z-0 whitespace-nowrap" style={{ fontSize: wmPreviewSize.textPx, color: 'rgba(0,0,0,0.04)', fontWeight: 700 }}>PC Memorial Kalawati Hospital</div>
           );
         })()}
+          </div>
+        )}
         {/* Hospital Registration No. — top-right corner */}
         {settings.hospitalRegNo && settings.showHospitalRegNo && (
           <div className="absolute top-3 right-3 px-3 py-1.5 rounded border border-emerald-200 bg-white z-10 text-right whitespace-nowrap">
@@ -1145,30 +1494,104 @@ export function PrescriptionView({ prescription }: PrescriptionViewProps) {
           </div>
         ) : null}
 
-        {/* Footer */}
-        {settings.showRxId && (
-          <>
+        {/* Footer block - Rx ID & Date, Doctor Signature, and Disclaimer grouped at the BOTTOM of the page.
+            mt-auto pushes this whole block to the bottom of the flex-column card (which has min-h-[80vh]).
+            Shows whenever any of the three footer toggles is ON (previously signature was hidden if Rx ID was off). */}
+        {(settings.showRxId || settings.showSignature || (settings.showDisclaimer && settings.disclaimerText.trim())) && (
+          <div className="mt-auto">
             <Separator className="my-4" />
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-xs text-gray-400">
-                  Generated: {new Date().toLocaleString('en-IN')}
-                </p>
-                <p className="text-[10px] text-gray-300 font-mono mt-0.5">Rx ID: {rx.id}</p>
-              </div>
-              {settings.showSignature && (
-                <div className="text-center">
-                  {rx.doctorName && (
-                    <p className="text-sm font-semibold text-gray-800 mb-1">{rx.doctorName}</p>
-                  )}
-                  <div className="w-48 border-t border-gray-400 pt-1">
-                    <p className="text-xs text-gray-600">Doctor&apos;s Signature</p>
+            {/* Rx ID & Date  |  Doctor Signature row */}
+            {(settings.showRxId || settings.showSignature) && (
+              <div className="flex justify-between items-end">
+                {settings.showRxId ? (
+                  <div>
+                    <p className="text-xs text-gray-400">
+                      Generated: {new Date().toLocaleString('en-IN')}
+                    </p>
+                    <p className="text-[10px] text-gray-300 font-mono mt-0.5">Rx ID: {rx.id}</p>
                   </div>
+                ) : <div />}
+                {settings.showSignature && (
+                  <div className="text-center">
+                    {rx.doctorName && (
+                      <p className="text-sm font-semibold text-gray-800 mb-1">{rx.doctorName}</p>
+                    )}
+                    <div className="w-48 border-t border-gray-400 pt-1">
+                      <p className="text-xs text-gray-600">Doctor&apos;s Signature</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Disclaimer - full width, at the very bottom */}
+            {settings.showDisclaimer && (settings.disclaimerText.trim() || (settings.disclaimerText2 || '').trim()) && (
+              <div className="mt-3 pt-2 border-t border-dashed border-emerald-200 text-[9px] italic text-gray-500 leading-snug text-justify">
+                <span className="inline-block font-extrabold not-italic uppercase tracking-wide text-emerald-800 text-[8.5px] mr-1.5 px-1 py-px bg-emerald-50 rounded align-baseline">Disclaimer</span>
+                <span className="align-baseline">{settings.disclaimerText}</span>
+                {(settings.disclaimerText2 || '').trim() && (
+                  <span className="block mt-0.5">{settings.disclaimerText2}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Side panel - shown on the SIDE of the page. Doctors on TOP, Facilities on BOTTOM. NO box/border (plain bold text). */}
+        {((settings.showDoctors && settings.doctorsText.trim()) || (settings.showFacilities && settings.facilitiesText.trim())) && (() => {
+          const dSize = SIDE_SIZE_MAP[settings.doctorsTextSize] || SIDE_SIZE_MAP.medium;
+          const fSize = SIDE_SIZE_MAP[settings.facilitiesTextSize] || SIDE_SIZE_MAP.medium;
+          const panelWidth = Math.max(settings.showDoctors && settings.doctorsText.trim() ? dSize.width : 0, settings.showFacilities && settings.facilitiesText.trim() ? fSize.width : 0);
+          return (
+            <div className="absolute top-2 right-2 z-10 flex flex-col gap-16 pointer-events-none" style={{ width: `${panelWidth}px` }}>
+              {/* Doctors section (TOP) */}
+              {settings.showDoctors && settings.doctorsText.trim() && (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="font-black uppercase tracking-wide text-black text-center border-b border-dashed border-emerald-300 pb-1.5 mb-2 w-full" style={{ fontSize: `${dSize.title}px` }}>Our Doctors</div>
+                  {(() => {
+                    const lines = settings.doctorsText.split('\n').map(l => l.trim()).filter(Boolean);
+                    const footerLabel = (settings.doctorsFooterLabel || '').trim();
+                    const renderDoctor = (line: string, key: string) => {
+                      const parts = line.split('|').map(p => p.trim());
+                      const name = parts[0] || '';
+                      const spec = parts[1] || '';
+                      const qual = parts[2] || '';
+                      return (
+                        <div key={key} className="flex flex-col items-center gap-0.5 leading-tight text-center">
+                          <div className="font-extrabold text-emerald-800" style={{ fontSize: `${dSize.item}px` }}>{name}</div>
+                          {spec && <div className="font-bold italic text-emerald-600" style={{ fontSize: `${dSize.item * 0.85}px` }}>{spec.startsWith('(') ? spec : `(${spec})`}</div>}
+                          {qual && <div className="font-semibold text-gray-500" style={{ fontSize: `${dSize.item * 0.78}px` }}>{qual}</div>}
+                        </div>
+                      );
+                    };
+                    if (footerLabel && lines.length >= 1) {
+                      // Insert the Chief Admin / Director label BEFORE the last doctor (designating the last doctor as the chief admin/director)
+                      const allButLast = lines.slice(0, -1);
+                      const lastLine = lines[lines.length - 1];
+                      return (
+                        <>
+                          {allButLast.map((line, idx) => renderDoctor(line, `doc-${idx}`))}
+                          <div className="font-black uppercase tracking-wide text-black text-center border-t border-dashed border-emerald-300 pt-1.5 mt-2 mb-2 w-full leading-tight" style={{ fontSize: `${dSize.title * 0.5}px` }}>{footerLabel}</div>
+                          {renderDoctor(lastLine, 'doc-last')}
+                        </>
+                      );
+                    }
+                    return <>{lines.map((line, idx) => renderDoctor(line, `doc-${idx}`))}</>;
+                  })()}
+                </div>
+              )}
+              {/* Facilities section (BOTTOM) */}
+              {settings.showFacilities && settings.facilitiesText.trim() && (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="font-black uppercase tracking-wide text-black text-center border-b border-dashed border-emerald-300 pb-1.5 mb-2 w-full" style={{ fontSize: `${fSize.title}px` }}>Our Facilities</div>
+                  {settings.facilitiesText.split('\n').map((line, idx) => {
+                    const t = line.trim();
+                    return t ? <div key={idx} className="font-extrabold text-emerald-800 text-center leading-snug" style={{ fontSize: `${fSize.item}px` }}>{t}</div> : null;
+                  })}
                 </div>
               )}
             </div>
-          </>
-        )}
+          );
+        })()}
       </div>
     </>
   );
