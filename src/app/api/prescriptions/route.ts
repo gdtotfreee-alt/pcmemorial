@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const patientId = searchParams.get('patientId') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limitParam = searchParams.get('limit');
-    const limit = limitParam ? parseInt(limitParam) : 50000;
+    const limit = limitParam ? parseInt(limitParam) : 100;
     const dateFrom = searchParams.get('dateFrom') || '';
     const dateTo = searchParams.get('dateTo') || '';
 

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limitParam = searchParams.get('limit');
-    const limit = limitParam ? parseInt(limitParam) : 50000;
+    const limit = limitParam ? parseInt(limitParam) : 100;
 
     const where = search ? {
       OR: [

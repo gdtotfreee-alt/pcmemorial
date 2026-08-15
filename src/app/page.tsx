@@ -185,7 +185,7 @@ export default function Home() {
   }, [loadPatients, loadPrescriptions]);
 
   useEffect(() => {
-    const interval = setInterval(() => { loadPatients(); loadPrescriptions(); invalidateMedicineCache(); getMedicineTemplates(); }, 15000);
+    const interval = setInterval(() => { loadPatients(); loadPrescriptions(); invalidateMedicineCache(); getMedicineTemplates(); }, 300000);
     return () => clearInterval(interval);
   }, [loadPatients, loadPrescriptions]);
 

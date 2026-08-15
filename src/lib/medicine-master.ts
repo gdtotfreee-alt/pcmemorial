@@ -39,7 +39,7 @@ export function invalidateMedicineCache(): void {
  */
 export async function refreshMedicineTemplatesInBackground(): Promise<void> {
   try {
-    const res = await fetch('/api/medicines?limit=50000');
+    const res = await fetch('/api/medicines?limit=1000');
     if (res.ok) {
       const data = await res.json();
       cache = data.medicines || [];
@@ -60,7 +60,7 @@ export async function getMedicineTemplates(): Promise<MedicineTemplate[]> {
 
 async function _fetchMedicines(): Promise<MedicineTemplate[]> {
   try {
-    const res = await fetch('/api/medicines?limit=50000');
+    const res = await fetch('/api/medicines?limit=1000');
     if (res.ok) {
       const data = await res.json();
       cache = data.medicines || [];

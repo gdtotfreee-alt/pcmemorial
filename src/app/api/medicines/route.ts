@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50000');
+    const limit = parseInt(searchParams.get('limit') || '100');
 
     const where: Record<string, unknown> = {};
 

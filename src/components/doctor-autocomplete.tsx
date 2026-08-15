@@ -46,7 +46,7 @@ export function DoctorAutocomplete({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/doctors?limit=50000');
+        const res = await fetch('/api/doctors?limit=100');
         const data = await res.json();
         if (!cancelled && Array.isArray(data.doctors)) {
           setDoctors(data.doctors);
