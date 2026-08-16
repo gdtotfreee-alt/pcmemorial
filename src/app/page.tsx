@@ -230,27 +230,11 @@ export default function Home() {
   );
 
   return (
-    <div className="h-screen h-dvh flex overflow-hidden bg-slate-50">
-      {/* Desktop Sidebar */}
+    <div className="min-h-screen min-h-dvh bg-slate-50">
+      {/* Desktop Sidebar — fixed full-height, independent of page scroll */}
       <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 flex-col z-40 shadow-xl border-r border-slate-200">
         {sidebarContent}
       </aside>
-
-      {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-lg border-b border-slate-200">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={() => setSidebarOpen(true)} className="bg-slate-100 rounded-lg p-2 hover:bg-slate-200 transition-colors text-slate-600" aria-label="Open menu">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </button>
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <img src="/hospital-logo.jpeg" alt="Logo" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-[13px] font-extrabold leading-tight text-slate-900 uppercase truncate">PC Memorial Kalawati Hospital</h1>
-              <p className="text-[10px] text-emerald-600 font-medium truncate">{activeTab === 'new-prescription' && editingPrescription ? 'Edit Rx' : sectionInfo.title}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Mobile Sidebar Sheet */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -260,9 +244,30 @@ export default function Home() {
         </SheetContent>
       </Sheet>
 
-      {/* Main Content — NO footer inside here, footer is fixed outside */}
-      <div className="md:ml-64 flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex items-center justify-between bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
+      {/* Main Content column. IMPORTANT: this is a normal-flow column, NOT height-locked
+          to the viewport (no h-screen/flex-1 on <main>). That was the actual cause of the
+          gap — forcing <main> to fill the full viewport height leaves blank space below
+          short content, before the footer. Instead, the whole window scrolls, the header
+          stays pinned via `sticky`, and the footer simply follows the content, wherever
+          that ends up. */}
+      <div className="md:ml-64">
+        {/* Mobile Top Bar — sticky so it stays visible while scrolling */}
+        <div className="md:hidden sticky top-0 z-40 bg-white shadow-lg border-b border-slate-200">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <button onClick={() => setSidebarOpen(true)} className="bg-slate-100 rounded-lg p-2 hover:bg-slate-200 transition-colors text-slate-600" aria-label="Open menu">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <img src="/hospital-logo.jpeg" alt="Logo" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-[13px] font-extrabold leading-tight text-slate-900 uppercase truncate">PC Memorial Kalawati Hospital</h1>
+                <p className="text-[10px] text-emerald-600 font-medium truncate">{activeTab === 'new-prescription' && editingPrescription ? 'Edit Rx' : sectionInfo.title}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <header className="hidden md:flex sticky top-0 z-30 items-center justify-between bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">{NAV_ITEMS.find((n) => n.id === activeTab)?.icon}</div>
             <div>
@@ -280,7 +285,10 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 pt-16 pb-32 md:p-6 md:pt-6 md:pb-14">
+        {/* No flex-1, no overflow-y-auto, no forced height — this simply takes exactly
+            the height of whatever the active tab renders, and the footer below picks
+            up right after it, wherever that is. */}
+        <main className="p-4 md:p-6">
           {activeTab === 'patients' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
               <div className="lg:sticky lg:top-6"><PatientForm onCreated={handlePatientCreated} onUpdated={handlePatientUpdated} /></div>
@@ -297,54 +305,56 @@ export default function Home() {
           {activeTab === 'medicine-master' && <MedicineMasterPage />}
           {activeTab === 'backup' && <BackupPage />}
         </main>
-      </div>
 
-      {/* ====== MOBILE: FIXED bottom tab bar + copyright (position:fixed) ====== */}
-      <div className="md:hidden" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-        <div className="bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center justify-around px-1 pt-1.5 pb-1">
-            {BOTTOM_TABS.map((tabId) => {
-              const item = NAV_ITEMS.find((n) => n.id === tabId)!;
-              const isActive = activeTab === tabId;
-              const isRx = tabId === 'new-prescription';
-              return (
-                <button key={tabId} onClick={() => { if (isActive) return; setActiveTab(tabId); }}
-                  className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg min-w-[3.5rem] transition-all duration-200 relative ${isActive ? 'text-emerald-600' : 'text-slate-400 active:text-slate-600'}`}
-                  aria-label={item.label}>
-                  {isRx ? (
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all ${isActive ? 'bg-emerald-600 text-white shadow-emerald-300' : 'bg-emerald-500 text-white shadow-emerald-200'}`}>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                    </div>
-                  ) : (
-                    <span className={`transition-all ${isActive ? 'scale-110' : ''}`}>
-                      <span className={`block ${isActive ? '[&>svg]:w-[22px] [&>svg]:h-[22px]' : ''}`}>{item.icon}</span>
-                    </span>
-                  )}
-                  <span className={`text-[10px] leading-tight font-medium ${isActive ? 'text-emerald-700 font-semibold' : ''}`}>
-                    {tabId === 'new-prescription' ? 'New Rx' : tabId === 'medicine-master' ? 'Medicines' : item.label}
-                  </span>
-                </button>
-              );
-            })}
-            <button onClick={() => setSidebarOpen(true)} className="flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg min-w-[3.5rem] transition-all duration-200 text-slate-400 active:text-slate-600" aria-label="More options">
-              <span className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
-              </span>
-              <span className="text-[10px] leading-tight font-medium">More</span>
-            </button>
-          </div>
-        </div>
-        <div className="bg-white border-t border-slate-100 px-4 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 flex items-center justify-center">
-          <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">&copy; 2026 PC Memorial Kalawati Hospital</p>
-        </div>
-      </div>
-
-      {/* ====== DESKTOP: FIXED copyright taskbar (position:fixed, bottom:0, left:256px) ====== */}
-      <div className="hidden md:block" style={{ position: 'fixed', bottom: 0, left: '16rem', right: 0, zIndex: 50 }}>
-        <div className="bg-white border-t border-slate-200 px-6 py-2.5">
+        {/* Desktop footer — plain normal-flow element, directly after <main>. Whatever
+            height <main> ends up being, this sits right below it. No gap possible. */}
+        <div className="hidden md:block flex-shrink-0 bg-white border-t border-slate-200 px-6 py-2.5">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500 font-semibold uppercase">&copy; 2026 PC Memorial Kalawati Hospital</p>
             <p className="text-[11px] text-slate-400">Prescription Management System v2.2</p>
+          </div>
+        </div>
+
+        {/* Mobile bottom tab bar + copyright — sticky so navigation stays reachable
+            without scrolling, but it still sits right after the content on short pages
+            since sticky elements participate in normal flow until they'd otherwise
+            scroll out of view. */}
+        <div className="md:hidden sticky bottom-0 flex-shrink-0">
+          <div className="bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center justify-around px-1 pt-1.5 pb-1">
+              {BOTTOM_TABS.map((tabId) => {
+                const item = NAV_ITEMS.find((n) => n.id === tabId)!;
+                const isActive = activeTab === tabId;
+                const isRx = tabId === 'new-prescription';
+                return (
+                  <button key={tabId} onClick={() => { if (isActive) return; setActiveTab(tabId); }}
+                    className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg min-w-[3.5rem] transition-all duration-200 relative ${isActive ? 'text-emerald-600' : 'text-slate-400 active:text-slate-600'}`}
+                    aria-label={item.label}>
+                    {isRx ? (
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all ${isActive ? 'bg-emerald-600 text-white shadow-emerald-300' : 'bg-emerald-500 text-white shadow-emerald-200'}`}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                      </div>
+                    ) : (
+                      <span className={`transition-all ${isActive ? 'scale-110' : ''}`}>
+                        <span className={`block ${isActive ? '[&>svg]:w-[22px] [&>svg]:h-[22px]' : ''}`}>{item.icon}</span>
+                      </span>
+                    )}
+                    <span className={`text-[10px] leading-tight font-medium ${isActive ? 'text-emerald-700 font-semibold' : ''}`}>
+                      {tabId === 'new-prescription' ? 'New Rx' : tabId === 'medicine-master' ? 'Medicines' : item.label}
+                    </span>
+                  </button>
+                );
+              })}
+              <button onClick={() => setSidebarOpen(true)} className="flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-lg min-w-[3.5rem] transition-all duration-200 text-slate-400 active:text-slate-600" aria-label="More options">
+                <span className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+                </span>
+                <span className="text-[10px] leading-tight font-medium">More</span>
+              </button>
+            </div>
+          </div>
+          <div className="bg-white border-t border-slate-100 px-4 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 flex items-center justify-center">
+            <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">&copy; 2026 PC Memorial Kalawati Hospital</p>
           </div>
         </div>
       </div>
